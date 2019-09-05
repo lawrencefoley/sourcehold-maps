@@ -18,10 +18,13 @@ class AbstractDebugger(object):
     def __init__(self, path):
         self.path = path
 
+    def delete_breakpoints(self, breakpoints):
+        raise NotImplementedError("")
+
     def set_breakpoints(self, breakpoints):
         raise NotImplementedError("")
 
-    def go_to_next_breakpoint(self):
+    def go_to_next_breakpoint(self, asserted_bp = None):
         raise NotImplementedError("")
 
     def get_breakpoint(self):
@@ -64,6 +67,12 @@ class NetworkedDebugger(AbstractDebugger):
             BREAKPOINT = (addr, name)""")
         self.client.execute("x64dbgpy.Event.listen('breakpoint', on_breakpoint)")
 
+    def delete_breakpoints(self, breakpoints):
+        for addr, name in breakpoints:
+            self.exec_direct("bpc {}".format(addr))
+            if (addr, name) in self.breakpoints:
+                self.breakpoints.append((addr, name))
+
     def set_breakpoints(self, breakpoints):
         for addr, name in breakpoints:
             self.exec_direct("bp {}, \\\"{}\\\"".format(addr, name))
@@ -78,9 +87,13 @@ class NetworkedDebugger(AbstractDebugger):
         bp = ('0x'+hex(bp[0])[2:].upper(), bp[1])
         return bp
 
-    def go_to_next_breakpoint(self):
+    def go_to_next_breakpoint(self, asserted_bp = None):
         self.client.execute("x64dbgpy.pluginsdk.Run()")
-        return self.get_breakpoint()
+        bp = self.get_breakpoint()
+        if asserted_bp != None:
+            if asserted_bp != bp:
+                raise Exception("Current breakpoint {} is not the expected breakpoint {}".format(bp, asserted_bp))
+        return bp
 
     def read(self, addr, size):
         return b(self.client.evaluate("x64dbgpy.pluginsdk.Read({}, {})".format(hex(addr), size)))
@@ -122,15 +135,22 @@ class DirectDebugger(AbstractDebugger):
     def get_breakpoint(self):
         return self.breakpoint
 
+    def delete_breakpoints(self, breakpoints):
+        raise NotImplementedError("")
+
     def set_breakpoints(self, breakpoints):
         for addr, name in breakpoints:
             self.x64dbgpy.pluginsdk.x64dbg.DbgCmdExecDirect('bp {}, "{}"'.format(addr, name))
             self.x64dbgpy.pluginsdk.x64dbg.DbgCmdExecDirect('bpe {}'.format(addr))
             self.breakpoints.append((addr, name))
 
-    def go_to_next_breakpoint(self):
+    def go_to_next_breakpoint(self, asserted_bp = None):
         self.x64dbgpy.pluginsdk.Run()
-        return self.get_breakpoint()
+        bp = self.get_breakpoint()
+        if asserted_bp != None:
+            if asserted_bp != bp:
+                raise Exception("Current breakpoint {} is not the expected breakpoint {}".format(bp, asserted_bp))
+        return bp
 
     def read(self, addr, size):
         return self.x64dbgpy.pluginsdk.Read(addr, size)
