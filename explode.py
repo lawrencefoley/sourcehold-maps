@@ -119,13 +119,13 @@ def convert_file(f, o):
 
     #decodeddata = io.BytesIO(b'')
 
-
-
+    print("explode data")
     result = dll.explode(read, write, work_buf, info)
+    print(result)
 
     if result != 0:
         raise Exception("conversion returned {}".format(result))
-
+    print("explode done")
     return result
 
 if __name__ == "__main__":
@@ -138,10 +138,11 @@ if __name__ == "__main__":
 
     #o = io.BytesIO()
 
-    with open(file, 'rb') as f:
-        convert_file(f, o)
+    r = convert_file(open(file, 'rb'), o)
+    print("opening destination file")
 
     with open(file + ".dat", 'wb') as f2:
+        print("writing file")
         o.seek(0)
         r = o.getvalue()
         print(len(r))
